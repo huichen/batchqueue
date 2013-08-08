@@ -8,7 +8,7 @@ type Runner struct {
 }
 
 type Task interface {
-	BatchRun(tasks []Task)
+	BatchRun(queue *Queue, tasks []Task)
 }
 
 type TaskNode struct {

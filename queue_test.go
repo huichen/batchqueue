@@ -10,7 +10,7 @@ type MyTask struct {
 	id string
 }
 
-func (t MyTask) BatchRun(tasks []Task) {
+func (t MyTask) BatchRun(queue *Queue, tasks []Task) {
 	output := ""
 	for _, t := range tasks {
 		output += fmt.Sprintf("%s ", t.(MyTask).id)

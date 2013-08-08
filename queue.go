@@ -204,7 +204,7 @@ func (q *Queue) worker() {
 	for {
 		tasks := <-q.runnerChannel
 		if len(tasks) > 0 {
-			tasks[0].BatchRun(tasks)
+			tasks[0].BatchRun(q, tasks)
 		}
 	}
 }
