@@ -50,5 +50,5 @@ queue.AddTask(10, 3, MyTask{})
 
 ## 注意
 
-* 当NumTasksPerBatch>1时队列中的任务必须是同质的，也就是同样的类。否则BatchRun函数无法完成批量操作。
-* 当NumTasksPerBathc=1是队列中的任务可以不同质，这实际上退化成了无批处理的延迟任务队列
+* 当NumTasksPerBatch>1时，队列中的任务必须是同质的，也就是同样的类。否则BatchRun函数无法完成批量操作。
+* 当NumTasksPerBathc=1时，队列中的任务可以不同质，这实际上退化成了无批处理的延迟任务队列
