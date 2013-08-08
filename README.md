@@ -21,7 +21,7 @@ type MyTask struct {
 }
 
 // 批处理运行任务，tasks切片中的第一个任务就是此任务自己
-func (t MyTask) BatchRun(tasks []Task) {
+func (t MyTask) BatchRun(queue *batchqueue.Queue, tasks []Task) {
 	for _, task := range tasks {
 		myTask := task.(MyTask)
 		// 做点儿什么
