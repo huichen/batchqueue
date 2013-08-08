@@ -18,16 +18,6 @@ func (t MyTask) BatchRun(followingTasks []Task) {
 	fmt.Println(output)
 }
 
-func printQueue(queue *Queue) string {
-	output := ""
-	current := queue.taskList.head
-	for ; current != nil; current = current.next {
-		output += fmt.Sprintf("%d ", current.time)
-	}
-	output += "\n"
-	return output
-}
-
 func TestAddTask(t *testing.T) {
 	var queue Queue
 	options := InitOptions{
@@ -42,5 +32,6 @@ func TestAddTask(t *testing.T) {
 	queue.AddTask(3, 5, MyTask{"3"})
 	queue.AddTask(2, 5, MyTask{"2"})
 	queue.AddTask(17, 5, MyTask{"17"})
+	fmt.Println("任务总数", queue.NumTasks())
 	time.Sleep(time.Nanosecond * time.Duration(options.TimeUnit*20))
 }

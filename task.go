@@ -17,6 +17,5 @@ type TaskNode struct {
 }
 
 type TaskList struct {
-	head     *Runner
-	numTasks int
+	head *Runner
 }

@@ -9,16 +9,18 @@ import (
 
 // 批处理延迟任务队列
 type Queue struct {
+	sync.RWMutex
 	taskList         TaskList
 	timeUnit         uint64
 	startTime        time.Time
 	numTasksPerBatch int
 	runnerChannel    chan []Task
-	sync.RWMutex
+	isInitialized    bool
+	numTasks         uint64
 }
 
 type InitOptions struct {
-	// 时间单位的纳秒数，任务执行的最小时间间隔。
+	// 一个时间单位包含的纳秒数。这是任务执行的最小时间间隔。
 	TimeUnit uint64
 
 	// 执行批处理操作的最大协程数目，至少为1。
@@ -31,6 +33,11 @@ type InitOptions struct {
 
 // 初始化任务队列，并开始计时。
 func (q *Queue) Init(options InitOptions) {
+	if q.isInitialized {
+		log.Fatal("不能重复初始化batchqueue")
+	}
+	q.isInitialized = true
+
 	q.timeUnit = options.TimeUnit
 	q.startTime = time.Now()
 	if options.NumTasksPerBatch <= 0 {
@@ -54,18 +61,30 @@ func (q *Queue) Init(options InitOptions) {
 // 为timeout个时间单位。也就是说，任务的执行时间窗口为
 // [now+delay, now+delay+timeout]
 func (q *Queue) AddTask(delay uint64, timeout uint64, task Task) {
+	if !q.isInitialized {
+		log.Fatal("必须先初始化batchqueue")
+	}
 	runner := new(Runner)
 	runner.task = task
 	runner.time = q.Now() + delay
 	runner.timeout = timeout
 	q.Lock()
 	q.insert(&(q.taskList), runner)
+	q.numTasks++
 	q.Unlock()
 }
 
 // 当前时间，以Init调用开始为零点。单位为初始化时定义的时间单位。
 func (q *Queue) Now() uint64 {
+	if !q.isInitialized {
+		log.Fatal("必须先初始化batchqueue")
+	}
 	return uint64(time.Now().Sub(q.startTime).Nanoseconds()) / q.timeUnit
+}
+
+// 返回队列中的任务总数
+func (q *Queue) NumTasks() uint64 {
+	return q.numTasks
 }
 
 func (q *Queue) insert(list *TaskList, runner *Runner) {
@@ -119,6 +138,7 @@ func (q *Queue) start() {
 			taskCount++
 			if taskCount >= q.numTasksPerBatch {
 				q.runnerChannel <- tasks
+				q.numTasks -= uint64(len(tasks))
 				tasks = make([]Task, q.numTasksPerBatch)
 				taskCount = 0
 				numExpiredTasks = 0
@@ -127,6 +147,7 @@ func (q *Queue) start() {
 		}
 
 		if numExpiredTasks != 0 {
+			q.numTasks -= uint64(numExpiredTasks)
 			q.runnerChannel <- expiredTasks[0:numExpiredTasks]
 		}
 
