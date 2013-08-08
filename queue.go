@@ -74,6 +74,30 @@ func (q *Queue) AddTask(delay uint64, timeout uint64, task Task) {
 	q.Unlock()
 }
 
+// 在队列中删除所有等于task的任务。请慎重设计你的Task类，保证其中带有
+// 可以识别的ID等信息能够区别不同的任务，否则所有任务都会被删除！
+func (q *Queue) RemoveTasks(task Task) {
+	if !q.isInitialized {
+		log.Fatal("必须先初始化batchqueue")
+	}
+
+	q.Lock()
+	current := q.taskList.head
+	for ; current != nil && current.task == task; current = current.next {
+		q.taskList.head = current.next
+		q.numTasks--
+	}
+	for current.next != nil {
+		if current.next.task == task {
+			current.next = current.next.next
+			q.numTasks--
+		} else {
+			current = current.next
+		}
+	}
+	q.Unlock()
+}
+
 // 当前时间，以Init调用开始为零点。单位为初始化时定义的时间单位。
 func (q *Queue) Now() uint64 {
 	if !q.isInitialized {
