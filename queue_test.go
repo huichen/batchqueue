@@ -10,9 +10,9 @@ type MyTask struct {
 	id string
 }
 
-func (t MyTask) BatchRun(followingTasks []Task) {
+func (t MyTask) BatchRun(tasks []Task) {
 	output := ""
-	for _, t := range followingTasks {
+	for _, t := range tasks {
 		output += fmt.Sprintf("%s ", t.(MyTask).id)
 	}
 	fmt.Println(output)
