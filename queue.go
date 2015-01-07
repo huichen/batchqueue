@@ -17,6 +17,8 @@ type Queue struct {
 	runnerChannel    chan []Task
 	isInitialized    bool
 	numTasks         uint64
+	closed 		 bool
+	timeOut   	 int64
 }
 
 type InitOptions struct {
@@ -29,6 +31,9 @@ type InitOptions struct {
 
 	// 批处理最大的任务数目。
 	NumTasksPerBatch int
+	
+	//超时时间，0为不设超时
+	TimeOut int64
 }
 
 // 初始化任务队列，并开始计时。
@@ -45,6 +50,7 @@ func (q *Queue) Init(options InitOptions) {
 	} else {
 		q.numTasksPerBatch = options.NumTasksPerBatch
 	}
+	q.timeOut = options.TimeOut
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	if options.NumWorkers <= 0 {
@@ -64,6 +70,9 @@ func (q *Queue) AddTask(delay uint64, timeout uint64, task Task) {
 	if !q.isInitialized {
 		log.Fatal("必须先初始化batchqueue")
 	}
+	if q.closed {
+		return
+	}
 	runner := new(Runner)
 	runner.task = task
 	runner.time = q.Now() + delay
@@ -79,6 +88,9 @@ func (q *Queue) AddTask(delay uint64, timeout uint64, task Task) {
 func (q *Queue) RemoveTasks(task Task) {
 	if !q.isInitialized {
 		log.Fatal("必须先初始化batchqueue")
+	}
+	if q.closed {
+		return
 	}
 
 	q.Lock()
@@ -140,6 +152,12 @@ func (q *Queue) start() {
 	for {
 		q.Lock()
 		if q.taskList.head == nil {
+			q.Unlock()
+			if q.closed {
+				close(q.runnerChannel)
+				break
+			}
+			time.Sleep(time.Millisecond * 10)
 			continue
 		}
 		tasks := make([]Task, q.numTasksPerBatch)
@@ -202,9 +220,28 @@ func (q *Queue) start() {
 
 func (q *Queue) worker() {
 	for {
-		tasks := <-q.runnerChannel
+		tasks, isclose := <-q.runnerChannel
+		if !isclose && q.closed {
+			break
+		}
 		if len(tasks) > 0 {
-			tasks[0].BatchRun(q, tasks)
+			if q.timeOut > 0 {
+				insert := make(chan bool)
+				go func(){
+					tasks[0].BatchRun(q, tasks)
+					insert <- true
+				}()
+				select {
+				case <-time.After(time.Duration(q.timeOut)):
+				case <-insert:
+				}
+			} else {
+				tasks[0].BatchRun(q, tasks)
+			}
 		}
 	}
+}
+
+func (q *Queue) Close() {
+	q.closed = true
 }
